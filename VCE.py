@@ -100,13 +100,24 @@ def composeMail():
 
 def getMailBoxStatus():
     # host and port (ssl security)
-    mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
-    mail.login(EMAIL_ID, PASSWORD)  # login
-    stat, total = mail.select('Inbox')  # total number of mails in inbox
-    SpeakText("Number of mails in your inbox is " + str(int(total[0])))
+    M = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+    M.login(EMAIL_ID, PASSWORD)  # login
 
-    mail.close()
-    mail.logout()
+    for i in M.list()[1]:
+        l = i.decode().split(' "/" ')
+        if l[1] == '"[Gmail]"':
+            continue
+
+        stat, total = M.select(f'{l[1]}')
+        l[1] = l[1][1:-1]
+        messages = int(total[0])
+        if l[1] == 'INBOX':
+            SpeakText(l[1] + " has " + str(messages) + " messages.")
+        else:
+            SpeakText(l[1].split("/")[-1] + " has " + str(messages) + " messages.")
+
+    M.close()
+    M.logout()
 
 
 def clean(text):
@@ -120,12 +131,49 @@ def getLatestMails():
     """
     Get latest mails from Inbox (Defaults to 3)
     """
+    mailBoxTarget = "INBOX"
+    SpeakText("Choose the folder name to get the latest mails. Say 1 for Inbox. Say 2 for Sent Mailbox. Say 3 for Drafts. Say 4 for important mails. Say 5 for Spam. Say 6 for Starred Mails. Say 7 for Bin.")
+    cmb = speech_to_text()
+    if cmb == "1" or cmb.lower() == "one":
+        mailBoxTarget = "INBOX"
+        SpeakText("Inbox selected.")
+    elif cmb == "2" or cmb.lower() == "two" or cmb.lower() == "tu":
+        mailBoxTarget = '"[Gmail]/Sent Mail"'
+        SpeakText("Sent Mailbox selected.")
+    elif cmb == "3" or cmb.lower() == "three":
+        mailBoxTarget = '"[Gmail]/Drafts"'
+        SpeakText("Drafts selected.")
+    elif cmb == "4" or cmb.lower() == "four":
+        mailBoxTarget = '"[Gmail]/Important"'
+        SpeakText("Important Mails selected.")
+    elif cmb == "5" or cmb.lower() == "five":
+        mailBoxTarget = '"[Gmail]/Spam"'
+        SpeakText("Spam selected.")
+    elif cmb == "6" or cmb.lower() == "six":
+        mailBoxTarget = '"[Gmail]/Starred"'
+        SpeakText("Starred Mails selected.")
+    elif cmb == "7" or cmb.lower() == "seven":
+        mailBoxTarget = '"[Gmail]/Bin"'
+        SpeakText("Bin selected.")
+    else:
+        SpeakText("Wrong choice. Hence, default option Inbox wil be selected.")
+
     imap = imaplib.IMAP4_SSL("imap.gmail.com")
     imap.login(EMAIL_ID, PASSWORD)
 
-    status, messages = imap.select("INBOX")
-    N = 3   # number of top emails to fetch
+    status, messages = imap.select(mailBoxTarget)
+    
     messages = int(messages[0])
+
+    if messages == 0:
+        SpeakText("Selected MailBox is empty.")
+        return None
+    elif messages == 1:
+        N = 1   # number of top emails to fetch
+    elif messages == 2:
+        N = 2   # number of top emails to fetch
+    else:
+        N = 3   # number of top emails to fetch
 
     msgCount = 1
     for i in range(messages, messages-N, -1):
@@ -164,7 +212,7 @@ def getLatestMails():
                         if content_type == "text/plain" and "attachment" not in content_disposition:
                             SpeakText("Do you want to listen to the text content of the mail ? Please say YES or NO.")
                             talkMSG1 = speech_to_text()
-                            if talkMSG1.lower() == "yes":
+                            if "yes" in talkMSG1.lower():
                                 SpeakText("The mail body contains the following:")
                                 SpeakText(body)
                             else:
@@ -188,7 +236,7 @@ def getLatestMails():
                     if content_type == "text/plain":
                         SpeakText("Do you want to listen to the text content of the mail ? Please say YES or NO.")
                         talkMSG2 = speech_to_text()
-                        if talkMSG2.lower() == "yes":
+                        if "yes" in talkMSG2.lower():
                             SpeakText("The mail body contains the following:")
                             SpeakText(body)
                         else:
@@ -217,6 +265,136 @@ def getLatestMails():
 
 
 def searchMail():
+    M = imaplib.IMAP4_SSL('imap.gmail.com', 993)
+    M.login(EMAIL_ID, PASSWORD)
+
+    mailBoxTarget = "INBOX"
+    SpeakText("Where do you want to search ? Say 1 for Inbox. Say 2 for Sent Mailbox. Say 3 for Drafts. Say 4 for important mails. Say 5 for Spam. Say 6 for Starred Mails. Say 7 for Bin.")
+    cmb = speech_to_text()
+    if cmb == "1" or cmb.lower() == "one":
+        mailBoxTarget = "INBOX"
+        SpeakText("Inbox selected.")
+    elif cmb == "2" or cmb.lower() == "two" or cmb.lower() == "tu":
+        mailBoxTarget = '"[Gmail]/Sent Mail"'
+        SpeakText("Sent Mailbox selected.")
+    elif cmb == "3" or cmb.lower() == "three":
+        mailBoxTarget = '"[Gmail]/Drafts"'
+        SpeakText("Drafts selected.")
+    elif cmb == "4" or cmb.lower() == "four":
+        mailBoxTarget = '"[Gmail]/Important"'
+        SpeakText("Important Mails selected.")
+    elif cmb == "5" or cmb.lower() == "five":
+        mailBoxTarget = '"[Gmail]/Spam"'
+        SpeakText("Spam selected.")
+    elif cmb == "6" or cmb.lower() == "six":
+        mailBoxTarget = '"[Gmail]/Starred"'
+        SpeakText("Starred Mails selected.")
+    elif cmb == "7" or cmb.lower() == "seven":
+        mailBoxTarget = '"[Gmail]/Bin"'
+        SpeakText("Bin selected.")
+    else:
+        SpeakText("Wrong choice. Hence, default option Inbox wil be selected.")
+
+
+    M.select(mailBoxTarget)
+
+    SpeakText("Please mention the subject of the mail you want to search.")
+    searchSub = speech_to_text()
+    status, messages = M.search(None, f'SUBJECT "{searchSub}"')
+    if str(messages[0]) == "b''":
+        SpeakText(f"Mail not found in {mailBoxTarget}.")
+        return None
+
+    msgCount = 1
+    for i in messages:
+        SpeakText(f"Message {msgCount}:")
+        res, msg = M.fetch(i, "(RFC822)")   # fetch the email message by ID
+        for response in msg:
+            if isinstance(response, tuple):
+                msg = email.message_from_bytes(response[1])     # parse a bytes email into a message object
+
+                subject, encoding = decode_header(msg["Subject"])[0]    # decode the email subject
+                if isinstance(subject, bytes): 
+                    subject = subject.decode(encoding)      # if it's a bytes, decode to str
+                
+                From, encoding = decode_header(msg.get("From"))[0]      # decode email sender
+                if isinstance(From, bytes):
+                    From = From.decode(encoding)
+                SpeakText("Subject: " + subject)
+                FromArr = From.split()
+                FromName = " ".join(namechar for namechar in FromArr[0:-1])
+                SpeakText("From: " + FromName)
+                SpeakText("Sender mail: " + FromArr[-1])
+
+                # MULTIPART
+                if msg.is_multipart(): 
+                    for part in msg.walk(): # iterate over email parts
+                        content_type = part.get_content_type()      # extract content type of email
+                        content_disposition = str(
+                            part.get("Content-Disposition"))
+                        try:
+                            body = part.get_payload(decode=True).decode()   # get the email body
+                        except:
+                            pass
+
+                        # PLAIN TEXT MAIL
+                        if content_type == "text/plain" and "attachment" not in content_disposition:
+                            SpeakText("Do you want to listen to the text content of the mail ? Please say YES or NO.")
+                            talkMSG1 = speech_to_text()
+                            if "yes" in talkMSG1.lower():
+                                SpeakText("The mail body contains the following:")
+                                SpeakText(body)
+                            else:
+                                SpeakText("You chose NO")
+
+                        # MAIL WITH ATTACHMENT
+                        elif "attachment" in content_disposition:
+                            SpeakText("The mail contains attachment, the contents of which will be saved in respective folders with it's name similar to that of subject of the mail")
+                            filename = part.get_filename()  # download attachment
+                            if filename:
+                                folder_name = clean(subject)
+                                if not os.path.isdir(folder_name):
+                                    os.mkdir(folder_name)   # make a folder for this email (named after the subject)
+                                filepath = os.path.join(folder_name, filename)
+                                open(filepath, "wb").write(part.get_payload(decode=True))   # download attachment and save it
+                
+                # NOT MULTIPART
+                else:
+                    content_type = msg.get_content_type()    # extract content type of email
+                    body = msg.get_payload(decode=True).decode()    # get the email body
+                    if content_type == "text/plain":
+                        SpeakText("Do you want to listen to the text content of the mail ? Please say YES or NO.")
+                        talkMSG2 = speech_to_text()
+                        if "yes" in talkMSG2.lower():
+                            SpeakText("The mail body contains the following:")
+                            SpeakText(body)
+                        else:
+                            SpeakText("You chose NO")
+
+
+                # HTML CONTENTS
+                if content_type == "text/html":
+                    SpeakText("The mail contains an HTML part, the contents of which will be saved in respective folders with it's name similar to that of subject of the mail. You can view the html files in any browser, simply by clicking on them.")
+                    # if it's HTML, create a new HTML file
+                    folder_name = clean(subject)
+                    if not os.path.isdir(folder_name):  
+                        os.mkdir(folder_name)   # make a folder for this email (named after the subject)
+                    filename = "index.html"
+                    filepath = os.path.join(folder_name, filename)
+                    # write the file
+                    open(filepath, "w").write(body)
+                    
+                    # webbrowser.open(filepath)     # open in the default browser
+
+                SpeakText(f"\nEnd of message {msgCount}:")
+                msgCount += 1
+                print("="*100)
+
+    M.close()
+    M.logout()
+
+
+def searchMail_test():
     # create an IMAP4 class with SSL 
     imap = imaplib.IMAP4_SSL("imap.gmail.com")
     # authenticate
@@ -247,7 +425,7 @@ def main():
     if EMAIL_ID != "" and PASSWORD != "":
 
         # SpeakText("Choose and speak out the option number for the task you want to perform. Say 1 to send a mail. Say 2 to get your mailbox status. Say 3 to search a mail. Say 4 to get the last 3 mails.")
-        choice = '4'
+        choice = '3'
         # choice = speech_to_text()
 
         if choice == '1' or choice.lower() == 'one':
