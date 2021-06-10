@@ -11,11 +11,19 @@ from email.header import decode_header
 
 # CONSTANTS
 
-EMAIL_ID = ""
-PASSWORD = ""
+from CONSTANTS import EMAIL_ID, PASSWORD, LANGUAGE
+# from CONSTANTS_dev import EMAIL_ID, PASSWORD, LANGUAGE
 
 
-def SpeakText(command, langinp="en"):
+def SpeakText(command, langinp=LANGUAGE):
+    """
+    Text to Speech using GTTS
+
+    Args:
+        command (str): Text to speak
+        langinp (str, optional): Output language. Defaults to "en".
+    """
+    if langinp == "": langinp = "en"
     tts = gTTS(text=command, lang=langinp)
     tts.save("~tempfile01.mp3")
     playsound("~tempfile01.mp3")
@@ -24,6 +32,12 @@ def SpeakText(command, langinp="en"):
 
 
 def speech_to_text():
+    """
+    Speech to text
+
+    Returns:
+        str: Returns transcripted text
+    """
     r = sr.Recognizer()
     try:
         with sr.Microphone() as source2:
@@ -99,6 +113,9 @@ def composeMail():
 
 
 def getMailBoxStatus():
+    """
+    Get mail counts of all folders in the mailbox
+    """
     # host and port (ssl security)
     M = imaplib.IMAP4_SSL('imap.gmail.com', 993)
     M.login(EMAIL_ID, PASSWORD)  # login
@@ -129,7 +146,7 @@ def clean(text):
 
 def getLatestMails():
     """
-    Get latest mails from Inbox (Defaults to 3)
+    Get latest mails from folders in mailbox (Defaults to 3 Inbox mails)
     """
     mailBoxTarget = "INBOX"
     SpeakText("Choose the folder name to get the latest mails. Say 1 for Inbox. Say 2 for Sent Mailbox. Say 3 for Drafts. Say 4 for important mails. Say 5 for Spam. Say 6 for Starred Mails. Say 7 for Bin.")
@@ -265,6 +282,12 @@ def getLatestMails():
 
 
 def searchMail():
+    """
+    Search mails by subject / author mail ID
+
+    Returns:
+        None: None
+    """
     M = imaplib.IMAP4_SSL('imap.gmail.com', 993)
     M.login(EMAIL_ID, PASSWORD)
 
@@ -298,9 +321,24 @@ def searchMail():
 
     M.select(mailBoxTarget)
 
-    SpeakText("Please mention the subject of the mail you want to search.")
-    searchSub = speech_to_text()
-    status, messages = M.search(None, f'SUBJECT "{searchSub}"')
+    SpeakText("Say 1 to search mails from a specific sender. Say 2 to search mail with respect to the subject of the mail.")
+    mailSearchChoice = speech_to_text()
+    if mailSearchChoice == "1" or mailSearchChoice.lower() == "one":
+        SpeakText("Please mention the sender email ID you want to search.")
+        searchSub = speech_to_text()
+        searchSub = searchSub.replace("at the rate", "@")
+        searchSub = searchSub.replace(" ", "")
+        status, messages = M.search(None, f'FROM "{searchSub}"')
+    elif mailSearchChoice == "2" or mailSearchChoice.lower() == "two" or mailSearchChoice.lower() == "tu":
+        SpeakText("Please mention the subject of the mail you want to search.")
+        searchSub = speech_to_text()
+        status, messages = M.search(None, f'SUBJECT "{searchSub}"')
+    else:
+        SpeakText("Wrong choice. Performing default operation. Please mention the subject of the mail you want to search.")
+        searchSub = speech_to_text()
+        status, messages = M.search(None, f'SUBJECT "{searchSub}"')
+    
+    
     if str(messages[0]) == "b''":
         SpeakText(f"Mail not found in {mailBoxTarget}.")
         return None
@@ -394,39 +432,16 @@ def searchMail():
     M.logout()
 
 
-def searchMail_test():
-    # create an IMAP4 class with SSL 
-    imap = imaplib.IMAP4_SSL("imap.gmail.com")
-    # authenticate
-    imap.login(EMAIL_ID, PASSWORD)
-    imap.select("INBOX")
-
-    # search for specific mails by sender
-    status, messages = imap.search(None, 'FROM "googlealerts-noreply@google.com"')
-    # to get mails by subject
-    status, messages = imap.search(None, 'SUBJECT "Thanks for Subscribing to our Newsletter !"')
-    # to get mails after a specific date
-    status, messages = imap.search(None, 'SINCE "01-JAN-2020"')
-    # to get mails before a specific date
-    status, messages = imap.search(None, 'BEFORE "01-JAN-2020"')
-
-    # close the mailbox
-    imap.close()
-    # logout from the account
-    imap.logout()
-
-
-def getHelp():
-    SpeakText("Choose and speak out the option number for the task you want to perform. Say 1 to send a mail. Say 2 to get your mailbox status. Say 3 to search a mail. Say 4 to get the last 3 mails. Say help to hear this message once again.")
-
 
 def main():
+    """
+    Main function that handles primary choices
+    """
 
     if EMAIL_ID != "" and PASSWORD != "":
 
-        # SpeakText("Choose and speak out the option number for the task you want to perform. Say 1 to send a mail. Say 2 to get your mailbox status. Say 3 to search a mail. Say 4 to get the last 3 mails.")
-        choice = '3'
-        # choice = speech_to_text()
+        SpeakText("Choose and speak out the option number for the task you want to perform. Say 1 to send a mail. Say 2 to get your mailbox status. Say 3 to search a mail. Say 4 to get the last 3 mails.")
+        choice = speech_to_text()
 
         if choice == '1' or choice.lower() == 'one':
             composeMail()
@@ -441,6 +456,7 @@ def main():
 
     else:
         SpeakText("Both Email ID and Password should be present")
+
 
 
 if __name__ == '__main__':
