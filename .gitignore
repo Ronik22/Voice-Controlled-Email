@@ -1,5 +1,6 @@
 VCE_dev.py
 .vscode
+CONSTANTS_dev.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
